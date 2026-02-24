@@ -34,22 +34,40 @@ A practical use of this: the `/learn-store-context` and `/learn-load-context` sk
 
 ## Quick Start
 
-1. Install Python 3.11+ and ensure `pip` is available
-2. Install the MCP SDK:
+1. Install Python 3.11+
+2. Install the MCP SDK. Pick one approach and stick with it — the choice affects your `PYTHONPATH` in step 3:
+
+   **Option A — uv (recommended, uses `pyproject.toml`):**
+   ```bash
+   uv sync
+   ```
+   Your site-packages path will be inside `.venv/`:
+   ```bash
+   .venv/lib/python3.x/site-packages   # replace 3.x with your Python version
+   ```
+   Or get it precisely with:
+   ```bash
+   uv run python3 -c "import site; print(site.getsitepackages()[0])"
+   ```
+
+   **Option B — pip (global install):**
    ```bash
    pip install "mcp[cli]>=1.0.0"
    ```
+   Get your site-packages path with:
+   ```bash
+   python3 -c "import site; print(site.getsitepackages()[0])"
+   ```
+
 3. Copy `.mcp.json.example` to `.mcp.json` and fill in your paths:
    ```bash
    cp .mcp.json.example .mcp.json
    ```
-   Then edit `.mcp.json` — replace `<absolute-path-to-repo>` with the actual path to this directory, and `<python-site-packages-path>` with the output of:
-   ```bash
-   python3 -c "import site; print(site.getsitepackages()[0])"
-   ```
+   Edit `.mcp.json` — replace `<absolute-path-to-repo>` with the absolute path to this directory, and `<python-site-packages-path>` with the site-packages path from step 2.
 4. Restart Claude Code — the server tools will appear automatically.
 5. *(Optional)* Enable the `/learn-store-context` and `/learn-load-context` skills globally:
    ```bash
+   mkdir -p ~/.claude/skills
    cp -r .claude/skills/learn-store-context ~/.claude/skills/
    cp -r .claude/skills/learn-load-context ~/.claude/skills/
    ```
@@ -135,7 +153,7 @@ ls -lh data/files/
 |---|---|
 | `store_note(key, body, tags[])` | Save a text note or snippet |
 | `get_note(key)` | Retrieve a note by key |
-| `search_notes(query)` | Full-text search across all notes |
+| `search_notes(query)` | Keyword search across all notes (key, body, tags) |
 | `list_notes(tag?)` | List all notes (optionally filter by tag) |
 | `delete_note(key)` | Remove a note |
 

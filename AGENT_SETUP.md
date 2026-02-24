@@ -11,16 +11,19 @@ Read README.md and set up the my-own-mcp-server MCP server on this machine. Here
 
 1. Verify Python 3.11+ is available. If not, stop and tell me.
 
-2. Install the MCP SDK:
-   pip install "mcp[cli]>=1.0.0"
+2. Install the MCP SDK. Use uv if available (preferred), otherwise pip:
+   uv sync
+   # or: pip install "mcp[cli]>=1.0.0"
 
-3. Verify the server starts by running:
-   python3 server.py
-   It should print a line about loading tools to stderr, then block on stdin. Kill it with Ctrl+C after confirming it started.
+3. Verify the server starts. Run it with a timeout so it exits automatically:
+   timeout 3 python3 server.py 2>&1 || true
+   Expected output: a line mentioning "Loaded: example_tool.py". If you see an ImportError or ModuleNotFoundError, the MCP SDK is not on the path — stop and report the error.
 
 4. Find the absolute path of the current directory (this repo) and the Python site-packages path:
    pwd
    python3 -c "import site; print(site.getsitepackages()[0])"
+   If you used uv in step 2, use instead:
+   uv run python3 -c "import site; print(site.getsitepackages()[0])"
 
 5. Copy .mcp.json.example to .mcp.json and replace:
    - <absolute-path-to-repo> with the path from step 4
@@ -39,6 +42,7 @@ Read README.md and set up the my-own-mcp-server MCP server on this machine. Here
 7. Ask me: do you want the /learn-store-context and /learn-load-context skills available globally across all projects?
 
    - Yes: copy the skills to ~/.claude/skills/:
+     mkdir -p ~/.claude/skills
      cp -r .claude/skills/learn-store-context ~/.claude/skills/
      cp -r .claude/skills/learn-load-context ~/.claude/skills/
    - No: the skills will only work inside this project directory.
