@@ -251,3 +251,9 @@ All data stays on your machine:
 - Notes and metadata in `data/db.sqlite`
 - No network calls, no telemetry, no external services
 - No open ports — the server communicates only through stdin/stdout with Claude Code
+
+---
+
+## Future Todos
+
+- **Local embeddings with sqlite-vec** — add vector search
