@@ -3,20 +3,23 @@ Knowledge base tools.
 
 Notes are text entries stored in the `notes` SQLite table.
 Each note has a unique key, a body (free text), and optional tags.
-Search is full-text LIKE-based across key, body, and tags — sufficient
-for a personal knowledge base without the complexity of FTS5 triggers.
+
+Search defaults to semantic (embedding-based) similarity so queries match
+by meaning rather than exact keywords. Pass keyword=True to fall back to
+the original case-insensitive LIKE search.
 
 Tools registered:
-  store_note   — save or overwrite a note
+  store_note   — save or overwrite a note (also stores its embedding)
   get_note     — retrieve a note by key
-  search_notes — keyword search across all note fields
+  search_notes — semantic search by default; keyword search opt-in
   list_notes   — list all note keys (+ tags), optionally filtered by tag
-  delete_note  — remove a note
+  delete_note  — remove a note (and its embedding)
 """
 
 import json
 
 import db
+from modules.embeddings import encode, from_blob, rank, to_blob
 
 
 def register(mcp) -> None:  # noqa: ANN001
@@ -31,6 +34,8 @@ def register(mcp) -> None:  # noqa: ANN001
         Save a text note or snippet under a unique key.
 
         If a note with this key already exists it is overwritten.
+        An embedding is generated and stored alongside the note to
+        enable semantic search.
 
         Args:
             key:  Unique identifier for the note (e.g. "python/argparse-tips").
@@ -40,6 +45,7 @@ def register(mcp) -> None:  # noqa: ANN001
         Returns a confirmation string.
         """
         tags_json = json.dumps(tags or [])
+        embedding_blob = to_blob(encode(body))
         with db.connect() as conn:
             conn.execute(
                 """
@@ -51,6 +57,14 @@ def register(mcp) -> None:  # noqa: ANN001
                     updated_at = datetime('now')
                 """,
                 (key, body, tags_json),
+            )
+            conn.execute(
+                """
+                INSERT INTO note_embeddings (key, embedding)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET embedding = excluded.embedding
+                """,
+                (key, embedding_blob),
             )
         return f"Stored note '{key}'."
 
@@ -74,31 +88,67 @@ def register(mcp) -> None:  # noqa: ANN001
         return json.dumps(dict(row), indent=2)
 
     @mcp.tool()
-    def search_notes(query: str) -> str:
+    def search_notes(query: str, keyword: bool = False) -> str:
         """
-        Search notes by keyword.
+        Search notes by meaning (default) or by keyword.
 
-        Matches notes whose key, body, or tags contain the query string
-        (case-insensitive substring match).
+        By default, uses semantic search: finds notes that match the intent
+        of the query even when exact words differ. Results are ordered by
+        similarity, most relevant first.
+
+        Set keyword=True for a fast case-insensitive substring match across
+        key, body, and tags — useful when you need an exact term or phrase.
+
+        Args:
+            query:   What to search for.
+            keyword: If True, use keyword (LIKE) search instead of semantic.
 
         Returns a JSON array of matching note objects (key, body, tags,
         created_at, updated_at). Empty array if nothing matches.
         """
-        pattern = f"%{query}%"
+        if keyword:
+            pattern = f"%{query}%"
+            with db.connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT key, body, tags, created_at, updated_at
+                    FROM notes
+                    WHERE key   LIKE ? COLLATE NOCASE
+                       OR body  LIKE ? COLLATE NOCASE
+                       OR tags  LIKE ? COLLATE NOCASE
+                    ORDER BY updated_at DESC
+                    """,
+                    (pattern, pattern, pattern),
+                ).fetchall()
+            return json.dumps([dict(r) for r in rows], indent=2)
+
+        # Semantic search
+        query_vec = encode(query)
         with db.connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT key, body, tags, created_at, updated_at
-                FROM notes
-                WHERE key   LIKE ? COLLATE NOCASE
-                   OR body  LIKE ? COLLATE NOCASE
-                   OR tags  LIKE ? COLLATE NOCASE
-                ORDER BY updated_at DESC
-                """,
-                (pattern, pattern, pattern),
+            emb_rows = conn.execute(
+                "SELECT key, embedding FROM note_embeddings"
             ).fetchall()
 
-        return json.dumps([dict(r) for r in rows], indent=2)
+        candidates = [(r["key"], from_blob(r["embedding"])) for r in emb_rows]
+        ranked = rank(query_vec, candidates)
+
+        top_keys = [k for k, _ in ranked[:10]]
+        if not top_keys:
+            return "[]"
+
+        placeholders = ",".join("?" * len(top_keys))
+        with db.connect() as conn:
+            rows = conn.execute(
+                f"SELECT key, body, tags, created_at, updated_at FROM notes"  # noqa: S608
+                f" WHERE key IN ({placeholders})",
+                top_keys,
+            ).fetchall()
+
+        notes_by_key = {r["key"]: dict(r) for r in rows}
+        return json.dumps(
+            [notes_by_key[k] for k in top_keys if k in notes_by_key],
+            indent=2,
+        )
 
     @mcp.tool()
     def list_notes(tag: str | None = None) -> str:
@@ -134,6 +184,7 @@ def register(mcp) -> None:  # noqa: ANN001
             deleted = conn.execute(
                 "DELETE FROM notes WHERE key = ?", (key,)
             ).rowcount
+            conn.execute("DELETE FROM note_embeddings WHERE key = ?", (key,))
 
         if deleted:
             return f"Deleted note '{key}'."

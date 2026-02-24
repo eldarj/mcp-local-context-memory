@@ -31,6 +31,11 @@ def init() -> None:
                 size_bytes INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS note_embeddings (
+                key       TEXT PRIMARY KEY,
+                embedding BLOB NOT NULL
+            );
         """)
 
 
