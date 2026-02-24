@@ -28,6 +28,8 @@ Once connected, Claude can:
 
 ## Quick Start
 
+> **Prefer to let your AI do it?** Open this repo in Claude Code and paste the prompt from [AGENT_SETUP.md](AGENT_SETUP.md) — it will run through the entire setup for you. Otherwise, follow the steps below manually.
+
 1. Install Python 3.11+
 2. Install the MCP SDK. Pick one approach and stick with it — the choice affects your `PYTHONPATH` in step 3:
 
