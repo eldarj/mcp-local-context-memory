@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "my-own-mcp-server": {
+      "command": "python3",
+      "args": [
+        "<absolute-path-to-repo>/server.py"
+      ],
+      "cwd": "<absolute-path-to-repo>",
+      "env": {
+        "TRANSPORT": "stdio",
+        "PYTHONPATH": "<python-site-packages-path>"
+      }
+    }
+  }
+}

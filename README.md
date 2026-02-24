@@ -39,22 +39,27 @@ A practical use of this: the `/learn-store-context` and `/learn-load-context` sk
    ```bash
    pip install "mcp[cli]>=1.0.0"
    ```
-3. Add to `~/.claude/mcp.json`:
-   ```json
-   {
-     "mcpServers": {
-       "my-own-mcp-server": {
-         "command": "python3",
-         "args": ["/absolute/path/to/my-own-mcp-server/server.py"],
-         "cwd": "/absolute/path/to/my-own-mcp-server",
-         "env": {
-           "PYTHONPATH": "/path/to/site-packages"
-         }
-       }
-     }
-   }
+3. Copy `.mcp.json.example` to `.mcp.json` and fill in your paths:
+   ```bash
+   cp .mcp.json.example .mcp.json
+   ```
+   Then edit `.mcp.json` — replace `<absolute-path-to-repo>` with the actual path to this directory, and `<python-site-packages-path>` with the output of:
+   ```bash
+   python3 -c "import site; print(site.getsitepackages()[0])"
    ```
 4. Restart Claude Code — the server tools will appear automatically.
+
+To make the server available globally across all projects, register it at user scope:
+
+```bash
+claude mcp add --scope user my-own-mcp-server \
+  --cwd /absolute/path/to/repo \
+  -e TRANSPORT=stdio \
+  -e PYTHONPATH=$(python3 -c "import site; print(site.getsitepackages()[0])") \
+  python3 /absolute/path/to/repo/server.py
+```
+
+This writes into `~/.claude.json`, which Claude Code reads globally. Note: `~/.claude/mcp.json` is **not** read by Claude Code.
 
 ---
 

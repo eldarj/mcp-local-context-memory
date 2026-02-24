@@ -1,6 +1,12 @@
 # Runtime data — never commit user content or the database
 data/
 
+# Local MCP config — contains absolute paths specific to each machine
+.mcp.json
+
+# Local Claude Code settings — user-specific permissions and paths
+.claude/settings.local.json
+
 # Python
 __pycache__/
 *.py[cod]
