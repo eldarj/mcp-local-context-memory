@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ss:*)",
+      "Bash(sudo ss:*)",
+      "Bash(chmod:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(/home/ejahijagic/projects/finance-hub/docker/config/grafana/dashboards/traces.json:*)",
+      "Bash(for f in finance-hub logs traces)",
+      "Bash(do)",
+      "Bash(path=\"/home/ejahijagic/projects/finance-hub/docker/config/grafana/dashboards/$f.json\")",
+      "Bash(done)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(grep:*)",
+      "mcp__my-own-mcp-server__list_notes",
+      "mcp__my-own-mcp-server__get_note",
+      "mcp__my-own-mcp-server__store_note"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "my-own-mcp-server"
+  ]
+}

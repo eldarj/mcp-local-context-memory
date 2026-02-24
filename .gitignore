@@ -1,0 +1,17 @@
+# Runtime data — never commit user content or the database
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+
+# Environment overrides
+.env
+
+# Editor
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "my-own-mcp-server": {
+      "command": "python3",
+      "args": [
+        "/home/ejahijagic/projects/playground-my-own-mcp-server/server.py"
+      ],
+      "cwd": "/home/ejahijagic/projects/playground-my-own-mcp-server",
+      "env": {
+        "TRANSPORT": "stdio",
+        "PYTHONPATH": "/home/ejahijagic/.local/lib/python3.12/site-packages"
+      }
+    }
+  }
+}
