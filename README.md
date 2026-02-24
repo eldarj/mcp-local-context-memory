@@ -4,6 +4,8 @@ A private, locally-run [Model Context Protocol](https://modelcontextprotocol.io)
 
 Claude Code spawns the server as a child process on startup (stdio transport). No Docker, no daemon, no open ports.
 
+> **Using Cursor?** The MCP server works with any MCP-compatible client. See [CURSOR_SETUP.md](CURSOR_SETUP.md) for Cursor-specific setup instructions — open it in a Cursor Agent session and it will configure everything for you.
+
 ---
 
 ## What it does
