@@ -144,6 +144,8 @@ ls -lh data/files/
 
 ## Available Tools
 
+These are the underlying MCP tools the server exposes. In normal use you won't call them directly — the skills (`/learn-store-context`, `/learn-load-context`) and Claude itself call them automatically in the background. You can invoke them explicitly if you want to debug or do something one-off (e.g. "list all my notes tagged 'project-x'").
+
 ### System
 | Tool | Description |
 |---|---|
