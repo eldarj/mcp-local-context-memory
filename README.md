@@ -48,6 +48,12 @@ A practical use of this: the `/learn-store-context` and `/learn-load-context` sk
    python3 -c "import site; print(site.getsitepackages()[0])"
    ```
 4. Restart Claude Code — the server tools will appear automatically.
+5. *(Optional)* Enable the `/learn-store-context` and `/learn-load-context` skills globally:
+   ```bash
+   cp -r .claude/skills/learn-store-context ~/.claude/skills/
+   cp -r .claude/skills/learn-load-context ~/.claude/skills/
+   ```
+   These skills let Claude summarize and restore session context across conversations. Without this step the skills still work inside this project directory, but won't be available in other projects.
 
 To make the server available globally across all projects, register it at user scope:
 
@@ -67,7 +73,7 @@ This writes into `~/.claude.json`, which Claude Code reads globally. Note: `~/.c
 
 ### With Claude (normal mode)
 
-Claude Code reads `.mcp.json` (or `~/.claude/mcp.json`) and spawns the server automatically when a session starts. You don't run anything manually — just talk to Claude:
+Claude Code reads `.mcp.json` (or the global `~/.claude.json`) and spawns the server automatically when a session starts. You don't run anything manually — just talk to Claude:
 
 > "Store a note with key 'project/decisions', body 'Chose Postgres over MySQL for JSONB support.', tags ['project', 'decisions']."
 
@@ -170,14 +176,20 @@ Both notes and files support a `tags` list. Suggested conventions:
 
 ```
 my-own-mcp-server/
-├── server.py          # Entry point — init, tool registration, run
-├── config.py          # Configuration (DATA_DIR)
-├── db.py              # SQLite setup
+├── server.py              # Entry point — init, tool registration, run
+├── config.py              # Configuration (DATA_DIR)
+├── db.py                  # SQLite setup
 ├── modules/
-│   ├── storage.py     # File storage tools
-│   └── knowledge.py   # Knowledge base tools
-├── tools/             # Drop custom tools here (auto-loaded)
-├── data/              # Runtime data (gitignored)
+│   ├── storage.py         # File storage tools
+│   └── knowledge.py       # Knowledge base tools
+├── tools/                 # Drop custom tools here (auto-loaded)
+├── .claude/
+│   └── skills/
+│       ├── learn-store-context/   # Skill: summarize and store session context
+│       └── learn-load-context/    # Skill: restore context from a previous session
+├── .mcp.json.example      # Copy to .mcp.json and fill in your paths
+├── AGENT_SETUP.md         # Prompt for AI-assisted setup
+├── data/                  # Runtime data (gitignored)
 │   ├── db.sqlite
 │   └── files/
 └── pyproject.toml

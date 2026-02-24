@@ -40,11 +40,16 @@ my-own-mcp-server/
 │   ├── storage.py         # store_file / get_file / list_files / delete_file
 │   └── knowledge.py       # store_note / get_note / search_notes / list_notes / delete_note
 ├── tools/                 # Drop custom tools here — auto-loaded on startup
-│   └── example_tool.py   # Shows the register(mcp) pattern
+│   └── example_tool.py    # Shows the register(mcp) pattern
+├── .claude/
+│   └── skills/
+│       ├── learn-store-context/   # Skill: summarize and store session context
+│       └── learn-load-context/    # Skill: restore context from a previous session
+├── .mcp.json.example      # Copy to .mcp.json and fill in your paths (gitignored)
+├── AGENT_SETUP.md         # Prompt for AI-assisted setup
 ├── data/                  # Runtime data — gitignored, created by db.init()
 │   ├── db.sqlite
 │   └── files/
-├── .mcp.json              # Project-level MCP client config (stdio)
 └── pyproject.toml
 ```
 
@@ -179,8 +184,17 @@ This writes the config into `~/.claude.json`. Note: `~/.claude/mcp.json` is **no
 
 ## Pre-Configured Permissions
 
-`.claude/settings.local.json` allows the following without prompting:
-- `python3` — Python execution
-- `git add`, `git commit` — version control
-- `curl`, `chmod`, `ss` — utilities
-- `mcp__my-own-mcp-server__*` — MCP tool calls
+`.claude/settings.local.json` is gitignored (it contains machine-specific paths). Create it locally to pre-approve common operations without prompting:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__my-own-mcp-server__*"
+    ]
+  }
+}
+```

@@ -36,7 +36,14 @@ Read README.md and set up the my-own-mcp-server MCP server on this machine. Here
        -e PYTHONPATH=<python-site-packages-path> \
        python3 <absolute-path-to-repo>/server.py
 
-7. Tell me to restart Claude Code. After restarting, confirm setup works by calling the `ping` tool — it should return `pong`.
+7. Ask me: do you want the /learn-store-context and /learn-load-context skills available globally across all projects?
+
+   - Yes: copy the skills to ~/.claude/skills/:
+     cp -r .claude/skills/learn-store-context ~/.claude/skills/
+     cp -r .claude/skills/learn-load-context ~/.claude/skills/
+   - No: the skills will only work inside this project directory.
+
+8. Tell me to restart Claude Code. After restarting, confirm setup works by calling the `ping` tool — it should return `pong`.
 
 Do not skip any step. If anything fails, stop and explain what went wrong.
 ```
