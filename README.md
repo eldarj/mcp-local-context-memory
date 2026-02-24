@@ -6,7 +6,7 @@ Claude Code spawns the server as a child process on startup (stdio transport). N
 
 ---
 
-## What it changes
+## What it does
 
 | Without this server | With this server |
 |---|---|
@@ -17,18 +17,12 @@ Claude Code spawns the server as a child process on startup (stdio transport). N
 | Re-generate the same boilerplate repeatedly | Store once, retrieve and adapt anytime |
 | Context window is the only memory | Effectively unlimited persistent memory |
 
----
-
-## What it does
-
 Once connected, Claude can:
 
 - **Store and retrieve files/images** — save any content by name, get it back later
 - **Maintain a knowledge base** — store notes, snippets, and context; search by keyword
 - **Persist state across conversations** — everything lives in SQLite + local files and survives session restarts
 - **Call custom tools** — drop a Python file in `tools/`, it's auto-loaded on next startup
-
-A practical use of this: the `/learn-store-context` and `/learn-load-context` skills summarize conversations and store them as notes, so Claude can pick up where it left off across sessions.
 
 ---
 
@@ -88,6 +82,19 @@ This writes into `~/.claude.json`, which Claude Code reads globally. Note: `~/.c
 ---
 
 ## Usage
+
+### Commands
+
+Two skills ship with this repo for cross-session memory. Type either directly into any Claude Code conversation:
+
+| Command | What it does |
+|---|---|
+| `/learn-store-context` | Summarizes the current conversation and saves it as a note — run this at the end of a session |
+| `/learn-load-context` | Loads and reads back previously stored summaries — run this at the start of a new session to pick up where you left off |
+
+These work inside this project directory out of the box. To use them in any project, copy them to `~/.claude/skills/` (see Quick Start step 5).
+
+---
 
 ### With Claude (normal mode)
 
