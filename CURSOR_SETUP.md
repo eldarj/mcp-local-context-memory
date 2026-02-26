@@ -117,7 +117,7 @@ Cursor does not have a `/skills` system, so there are no `/learn-store-context` 
 **To save context at the end of a session** — call `store_note` with:
 - `key`: `conversation/YYYY-MM-DD-HHMMSS` (use the current date and time)
 - `body`: a concise summary covering what was discussed, decisions made, code changed, and open threads
-- `tags`: `["conversation", "context"]` plus any relevant topic tags
+- `tags`: a **comma-separated string**, e.g. `"conversation,context"` (do not pass an array; Cursor’s MCP layer can produce invalid JSON when tool arguments are arrays)
 
 **To restore context at the start of a new session** — call `list_notes` with `tag="conversation"` to see all stored summaries, then call `get_note` on the most recent one (or a few if relevant).
 
@@ -133,12 +133,12 @@ You can also use the tools for anything else:
 | Tool | Description |
 |---|---|
 | `ping` | Health check |
-| `store_note(key, body, tags[])` | Save a text note or snippet |
+| `store_note(key, body, tags?)` | Save a text note or snippet. tags optional, comma-separated string. |
 | `get_note(key)` | Retrieve a note by key |
 | `search_notes(query)` | Keyword search across all notes |
 | `list_notes(tag?)` | List all notes, optionally filtered by tag |
 | `delete_note(key)` | Delete a note |
-| `store_file(name, content_base64, mime_type, tags[])` | Save a file or image |
+| `store_file(name, content_base64, mime_type, tags?)` | Save a file or image. tags optional, comma-separated string. |
 | `get_file(name)` | Retrieve a file by name |
 | `list_files(tag?)` | List all stored files, optionally filtered by tag |
 | `delete_file(name)` | Delete a file |
