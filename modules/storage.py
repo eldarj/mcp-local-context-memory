@@ -19,10 +19,12 @@ import db
 from config import FILES_DIR
 
 
-def _normalize_tags(tags: str | None) -> list[str]:
-    """Parse tags from comma-separated string (avoids Cursor MCP array serialization issues)."""
+def _normalize_tags(tags: str | list[str] | None) -> list[str]:
+    """Accept tags as list or comma-separated string (avoids Cursor MCP array serialization issues)."""
     if tags is None:
         return []
+    if isinstance(tags, list):
+        return [str(t).strip() for t in tags if str(t).strip()]
     s = str(tags).strip()
     if not s:
         return []
