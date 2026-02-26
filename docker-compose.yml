@@ -1,0 +1,17 @@
+# UI service for the knowledge base visualisation.
+# The MCP server itself runs via stdio (spawned by Claude Code) — not managed here.
+#
+# Usage:
+#   docker compose up -d --build ui   # start
+#   docker compose down               # stop
+#
+# Then open http://localhost:8000
+
+services:
+  ui:
+    build: ./ui
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data:ro
+    restart: unless-stopped

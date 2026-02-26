@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Knowledge Base</h1>
+    <span id="node-count"></span>
+  </header>
+
+  <div id="main">
+    <div id="graph">
+      <div id="loading">Computing layout&hellip;</div>
+      <div id="empty" style="display:none">
+        No notes with embeddings found. Store some notes first.
+      </div>
+    </div>
+
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <div id="note-key"></div>
+        <button id="close-btn" onclick="closeSidebar()">&#x2715;</button>
+      </div>
+      <div id="sidebar-meta">
+        <div id="note-tags"></div>
+        <div id="note-meta"></div>
+      </div>
+      <div id="sidebar-body">
+        <div id="note-loading" style="display:none">Loading&hellip;</div>
+        <div id="note-content" style="display:none">
+          <div id="note-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+  <script src="app.js"></script>
+</body>
+</html>

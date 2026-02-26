@@ -1,0 +1,248 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0f0f1a;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+header {
+  padding: 11px 20px;
+  border-bottom: 1px solid #1e1e3a;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  background: #0c0c18;
+}
+
+header h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #b0b0ee;
+  letter-spacing: 0.4px;
+}
+
+#node-count {
+  font-size: 12px;
+  color: #44446a;
+}
+
+/* ── Main layout ── */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Graph panel ── */
+#graph {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#graph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.22s ease;
+  border-left: 1px solid #1e1e3a;
+  display: flex;
+  flex-direction: column;
+  background: #0c0c18;
+  flex-shrink: 0;
+}
+
+#sidebar.open {
+  width: 380px;
+}
+
+#sidebar-header {
+  padding: 13px 16px;
+  border-bottom: 1px solid #1e1e3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#note-key {
+  font-size: 11px;
+  color: #7070bb;
+  font-family: monospace;
+  word-break: break-all;
+  flex: 1;
+  line-height: 1.5;
+}
+
+#close-btn {
+  background: none;
+  border: none;
+  color: #44446a;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  padding: 2px;
+}
+
+#close-btn:hover { color: #aaa; }
+
+#sidebar-meta {
+  padding: 10px 16px;
+  border-bottom: 1px solid #1e1e3a;
+  flex-shrink: 0;
+}
+
+.tag {
+  display: inline-block;
+  background: #1a1a30;
+  color: #7070bb;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  margin: 2px 3px 2px 0;
+}
+
+#note-meta {
+  font-size: 11px;
+  color: #3a3a5a;
+  margin-top: 7px;
+}
+
+#sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+#note-loading {
+  color: #44446a;
+  font-size: 13px;
+}
+
+/* ── Note body markdown ── */
+#note-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #c0c0cc;
+}
+
+#note-body h1, #note-body h2, #note-body h3 {
+  color: #d8d8f0;
+  margin: 18px 0 8px;
+}
+#note-body h1 { font-size: 15px; }
+#note-body h2 { font-size: 14px; }
+#note-body h3 { font-size: 13px; }
+
+#note-body p { margin-bottom: 10px; }
+
+#note-body a { color: #7070cc; }
+
+#note-body code {
+  background: #18182c;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #9090dd;
+}
+
+#note-body pre {
+  background: #18182c;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+#note-body pre code {
+  background: none;
+  padding: 0;
+}
+
+#note-body ul, #note-body ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+#note-body li { margin-bottom: 4px; }
+
+#note-body strong { color: #d8d8f0; }
+
+#note-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+#note-body th, #note-body td {
+  border: 1px solid #1e1e3a;
+  padding: 5px 9px;
+  text-align: left;
+}
+
+#note-body th {
+  background: #18182c;
+  color: #9090cc;
+}
+
+/* ── Loading / empty states ── */
+#loading, #empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #44446a;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* ── Tooltip ── */
+#tooltip {
+  position: fixed;
+  background: #18182c;
+  border: 1px solid #2a2a48;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  max-width: 300px;
+  pointer-events: none;
+  display: none;
+  z-index: 200;
+  color: #b0b0c8;
+  line-height: 1.55;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+#tooltip strong {
+  display: block;
+  color: #8888cc;
+  font-family: monospace;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+/* ── Node labels ── */
+.node-label {
+  pointer-events: none;
+  user-select: none;
+  fill: #44446a;
+  font-size: 9px;
+  font-family: monospace;
+}
