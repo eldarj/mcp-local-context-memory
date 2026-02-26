@@ -26,6 +26,8 @@ The `/learn-store-context` and `/learn-load-context` skills are built on top of 
 | MCP SDK | `mcp[cli]` (Anthropic official) |
 | Transport | stdio — Claude Code spawns the process directly |
 | Storage | SQLite (`data/db.sqlite`) + filesystem (`data/files/`) |
+| Embeddings | `sentence-transformers` (`all-MiniLM-L6-v2`) + `numpy` |
+| UI | FastAPI + D3.js (Dockerised, separate from MCP server) |
 
 ---
 
@@ -38,13 +40,23 @@ my-own-mcp-server/
 ├── db.py                  # SQLite connection factory + schema init
 ├── modules/
 │   ├── storage.py         # store_file / get_file / list_files / delete_file
-│   └── knowledge.py       # store_note / get_note / search_notes / list_notes / delete_note
+│   ├── knowledge.py       # store_note / get_note / search_notes / list_notes / delete_note
+│   └── embeddings.py      # Lazy-loads all-MiniLM-L6-v2; encode / to_blob / from_blob / rank
+├── scripts/
+│   └── backfill_embeddings.py  # One-time migration to generate embeddings for existing notes
 ├── tools/                 # Drop custom tools here — auto-loaded on startup
 │   └── example_tool.py    # Shows the register(mcp) pattern
+├── ui/                    # Dockerised knowledge base UI (separate from MCP server)
+│   ├── Dockerfile
+│   ├── main.py            # FastAPI: /api/graph (cosine similarity links) + /api/notes/:key
+│   ├── requirements.txt
+│   └── static/            # D3 force graph, light theme, markdown sidebar
+├── docker-compose.yml     # UI service only — MCP server runs via stdio, not Docker
 ├── .claude/
 │   └── skills/
 │       ├── learn-store-context/   # Skill: summarize and store session context
-│       └── learn-load-context/    # Skill: restore context from a previous session
+│       ├── learn-load-context/    # Skill: restore context from a previous session
+│       └── learn-start-ui/        # Skill: start the knowledge base UI
 ├── .mcp.json.example      # Copy to .mcp.json and fill in your paths (gitignored)
 ├── AGENT_SETUP.md         # Prompt for AI-assisted setup
 ├── data/                  # Runtime data — gitignored, created by db.init()
@@ -70,7 +82,21 @@ To make the server available in all projects, register it at user scope via `cla
 ### Database (`db.py`)
 - `db.init()` is idempotent — safe to call every startup
 - `db.connect()` is a context manager: commits on success, rolls back on exception, always closes
-- Two tables: `notes` (key/body/tags/timestamps) and `files` (name/mime_type/tags/size/timestamp)
+- Three tables: `notes` (key/body/tags/timestamps), `files` (name/mime_type/tags/size/timestamp), `note_embeddings` (key, embedding BLOB)
+
+### Semantic search (`modules/embeddings.py`)
+- Lazy-loads `all-MiniLM-L6-v2` on first call (22M params, ~80MB, CPU-only)
+- `store_note` automatically generates and stores an embedding alongside the note body
+- `search_notes` defaults to semantic search (cosine similarity via `rank()`); pass `keyword=True` for LIKE fallback
+- Embeddings stored as `float32` BLOBs in `note_embeddings`; `to_blob` / `from_blob` handle serialisation
+
+### Knowledge base UI (`ui/`)
+- Separate Dockerised FastAPI app — reads `data/db.sqlite` directly via read-only volume mount
+- `/api/graph`: loads all note embeddings, computes pairwise cosine similarities, returns top-3 neighbour links per note
+- `/api/notes/:key`: returns full note body + metadata
+- Frontend: D3 force simulation where link strength ∝ similarity; nodes sized by body length, coloured by specific tag
+- Start with `/learn-start-ui` or `docker compose up -d --build ui`
+- Static files (`ui/static/`) are volume-mounted — CSS/JS changes reflect on refresh without rebuilding
 
 ### Adding a dynamic tool
 Drop a `.py` file into `tools/`. It must export `register(mcp)`:
@@ -131,16 +157,18 @@ def register(mcp):
 
 Roughly ordered by impact:
 
-- **SQLite FTS5 full-text search** — current `search_notes` is LIKE-based; FTS5 gives proper tokenised search with relevance ranking
 - **Note versioning** — keep edit history, allow diffing previous versions
-- **File content search** — search text content of stored `.txt`, `.md`, `.py`, `.json` files
+- **File content search** — extend semantic search to stored `.txt`, `.md`, `.py`, `.json` files
 - **MCP Resources support** — expose notes/files as MCP Resources so Claude can read them directly into context without a tool call
 - **Export / import** — `export_all` / `import_all` for backup and migration
+- **SQLite FTS5** — replace LIKE-based keyword fallback with proper tokenised full-text search
 - **Tagging improvements** — `list_tags`, `rename_tag`, `merge_tags` tools
 - **Pagination** — `limit` and `offset` on `list_files` and `list_notes`
 - **`rename_file` / `rename_note`** — move without delete-and-recreate
 - **Bulk delete** — `delete_notes_by_tag`, `delete_files_by_tag`
 - **Storage stats** — total counts, sizes, breakdown by tag
+- **UI: search bar** — filter visible nodes by semantic query
+- **UI: cache graph layout** — persist computed positions so large graphs don't recompute on every load
 
 ---
 

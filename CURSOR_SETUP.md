@@ -16,6 +16,27 @@ All data lives in a local SQLite database (`data/db.sqlite`) and `data/files/` o
 
 ---
 
+## Already running an older version?
+
+If you have a previous version of this server running and are pulling new changes, do this **before restarting Cursor**:
+
+```bash
+# 1. Install new dependencies (server fails to start without these)
+uv sync
+# or: pip install --break-system-packages "numpy>=1.24.0" "sentence-transformers>=3.0.0"
+
+# 2. Backfill embeddings for existing notes (semantic search returns nothing without this)
+uv run python3 scripts/backfill_embeddings.py   # uv
+# or: python3 scripts/backfill_embeddings.py    # pip
+```
+
+Also note: **`search_notes` now defaults to semantic search** — pass `keyword=True` if you need exact keyword matching:
+```
+search_notes(query="your query", keyword=True)
+```
+
+---
+
 ## Step 1 — Install dependencies
 
 Check Python 3.11+ is available:
@@ -24,12 +45,17 @@ Check Python 3.11+ is available:
 python3 --version
 ```
 
-Install the MCP SDK. Use uv if available (preferred, `pyproject.toml` is already configured), otherwise pip:
+Install all dependencies. Use uv if available (preferred, `pyproject.toml` is already configured), otherwise pip:
 
 ```bash
 uv sync
-# or: pip install "mcp[cli]>=1.0.0"
+# or: pip install "mcp[cli]>=1.0.0" "numpy>=1.24.0" "sentence-transformers>=3.0.0"
 ```
+
+> **Debian/Ubuntu note:** if `pip install` fails with "externally-managed-environment", add `--break-system-packages` to install into the user directory:
+> ```bash
+> pip install --break-system-packages "mcp[cli]>=1.0.0" "numpy>=1.24.0" "sentence-transformers>=3.0.0"
+> ```
 
 Determine the site-packages path — you will need this in Step 2:
 
@@ -44,10 +70,26 @@ python3 -c "import site; print(site.getsitepackages()[0])"
 Verify the server starts:
 
 ```bash
+# If you used uv:
+timeout 3 uv run python3 server.py 2>&1 || true
+
+# If you used pip:
 timeout 3 python3 server.py 2>&1 || true
 ```
 
-Expected output contains a line like `[tools] Loaded: example_tool.py`. If you see an `ImportError` or `ModuleNotFoundError`, the MCP SDK is not on the path — stop and report the error.
+Expected output contains a line like `[tools] Loaded: example_tool.py`. If you see an `ImportError` or `ModuleNotFoundError`, the packages are not on the path — stop and report the error.
+
+> **First-use note:** the first time `store_note` or `search_notes` is called, the server downloads the `all-MiniLM-L6-v2` embedding model (~80MB from HuggingFace). This is a one-time download; subsequent calls are fast. If the server appears to hang on the first call, it is downloading — wait 30–60 seconds.
+
+If you have existing notes that were stored before this feature was added, run the backfill script once to generate embeddings for them:
+
+```bash
+# If you used uv:
+uv run python3 scripts/backfill_embeddings.py
+
+# If you used pip:
+python3 scripts/backfill_embeddings.py
+```
 
 ---
 
@@ -128,6 +170,26 @@ You can also use the tools for anything else:
 
 ---
 
+## Knowledge Base UI (optional)
+
+A local web UI visualises all notes as an interactive graph — nodes are sized by note length, coloured by topic, and linked by semantic similarity. Requires Docker.
+
+```bash
+docker compose up -d --build ui
+```
+
+> **First build note:** the initial build downloads and installs torch and umap-learn, which takes 5–10 minutes. Subsequent builds are fast (cached layers).
+
+Then open http://localhost:8000. To stop:
+
+```bash
+docker compose down
+```
+
+CSS/JS changes in `ui/static/` reflect on browser refresh. Changes to `ui/main.py` require a rebuild (`--build`).
+
+---
+
 ## Reference — all available tools
 
 | Tool | Description |
@@ -135,7 +197,7 @@ You can also use the tools for anything else:
 | `ping` | Health check |
 | `store_note(key, body, tags[])` | Save a text note or snippet |
 | `get_note(key)` | Retrieve a note by key |
-| `search_notes(query)` | Keyword search across all notes |
+| `search_notes(query, keyword?)` | Semantic search by default; pass `keyword=True` for exact LIKE-based search |
 | `list_notes(tag?)` | List all notes, optionally filtered by tag |
 | `delete_note(key)` | Delete a note |
 | `store_file(name, content_base64, mime_type, tags[])` | Save a file or image |

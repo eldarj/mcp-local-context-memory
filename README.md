@@ -22,9 +22,36 @@ Claude Code spawns the server as a child process on startup (stdio transport). N
 Once connected, Claude can:
 
 - **Store and retrieve files/images** — save any content by name, get it back later
-- **Maintain a knowledge base** — store notes, snippets, and context; search by keyword
+- **Maintain a knowledge base** — store notes, snippets, and context; search by meaning (semantic) or keyword
 - **Persist state across conversations** — everything lives in SQLite + local files and survives session restarts
 - **Call custom tools** — drop a Python file in `tools/`, it's auto-loaded on next startup
+- **Visualise the knowledge base** — a local web UI shows all notes as an interactive graph, clustered by semantic similarity
+
+---
+
+## Upgrading from a previous version
+
+If you already have this server running and are pulling new changes, do this before restarting:
+
+**1. Install new dependencies** (the server will fail to start without these):
+```bash
+uv sync
+# or: pip install --break-system-packages "numpy>=1.24.0" "sentence-transformers>=3.0.0"
+```
+
+**2. Backfill embeddings for existing notes** (semantic search returns nothing without this):
+```bash
+# uv:
+uv run python3 scripts/backfill_embeddings.py
+# pip:
+python3 scripts/backfill_embeddings.py
+```
+
+**3. Note: `search_notes` now defaults to semantic search**
+The `query` parameter is now matched by meaning, not exact keywords. To preserve old keyword behaviour, pass `keyword=True`:
+```
+search_notes(query="authentication", keyword=True)
+```
 
 ---
 
@@ -95,6 +122,7 @@ Two skills ship with this repo for cross-session memory. Type either directly in
 |---|---|
 | `/learn-store-context` | Summarizes the current conversation and saves it as a note — run this at the end of a session |
 | `/learn-load-context` | Loads and reads back previously stored summaries — run this at the start of a new session to pick up where you left off |
+| `/learn-start-ui` | Starts the knowledge base UI at http://localhost:8000 (requires Docker) |
 
 These work inside this project directory out of the box. To use them in any project, copy them to `~/.claude/skills/` (see Quick Start step 5).
 
@@ -166,7 +194,7 @@ These are the underlying MCP tools the server exposes. In normal use you won't c
 |---|---|
 | `store_note(key, body, tags[])` | Save a text note or snippet |
 | `get_note(key)` | Retrieve a note by key |
-| `search_notes(query)` | Keyword search across all notes (key, body, tags) |
+| `search_notes(query, keyword?)` | Semantic search by default; pass `keyword=True` for exact LIKE-based search |
 | `list_notes(tag?)` | List all notes (optionally filter by tag) |
 | `delete_note(key)` | Remove a note |
 
@@ -212,12 +240,22 @@ my-own-mcp-server/
 ├── db.py                  # SQLite setup
 ├── modules/
 │   ├── storage.py         # File storage tools
-│   └── knowledge.py       # Knowledge base tools
+│   ├── knowledge.py       # Knowledge base tools (semantic search)
+│   └── embeddings.py      # sentence-transformers encoder + SQLite blob helpers
+├── scripts/
+│   └── backfill_embeddings.py  # One-time migration for existing notes
 ├── tools/                 # Drop custom tools here (auto-loaded)
+├── ui/                    # Knowledge base web UI
+│   ├── Dockerfile
+│   ├── main.py            # FastAPI: /api/graph + /api/notes/:key
+│   ├── requirements.txt
+│   └── static/            # index.html, app.js, style.css (D3 force graph)
+├── docker-compose.yml     # UI service only (MCP server is not in Docker)
 ├── .claude/
 │   └── skills/
 │       ├── learn-store-context/   # Skill: summarize and store session context
-│       └── learn-load-context/    # Skill: restore context from a previous session
+│       ├── learn-load-context/    # Skill: restore context from a previous session
+│       └── learn-start-ui/        # Skill: start the knowledge base UI
 ├── .mcp.json.example      # Copy to .mcp.json and fill in your paths
 ├── AGENT_SETUP.md         # Prompt for AI-assisted setup
 ├── data/                  # Runtime data (gitignored)
@@ -289,6 +327,9 @@ Then in a Claude conversation:
 
 - Python 3.11+
 - `mcp[cli]>=1.0.0`
+- `numpy>=1.24.0`
+- `sentence-transformers>=3.0.0`
+- Docker (optional — only needed for the UI)
 
 ---
 
@@ -304,4 +345,8 @@ All data stays on your machine:
 
 ## Future Todos
 
-- **Local embeddings with sqlite-vec** — add vector search
+- **SQLite FTS5** — replace LIKE-based keyword fallback with proper tokenised full-text search
+- **Note versioning** — keep edit history before overwriting
+- **Export / import** — `export_all` / `import_all` for backup and migration
+- **UI: cache UMAP/graph layout** — avoid recomputing on every page load at large scale
+- **UI: search bar** — filter visible nodes by query
