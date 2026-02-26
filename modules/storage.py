@@ -19,6 +19,18 @@ import db
 from config import FILES_DIR
 
 
+def _normalize_tags(tags: str | list[str] | None) -> list[str]:
+    """Accept tags as list or comma-separated string (avoids Cursor MCP array serialization issues)."""
+    if tags is None:
+        return []
+    if isinstance(tags, list):
+        return [str(t).strip() for t in tags if str(t).strip()]
+    s = str(tags).strip()
+    if not s:
+        return []
+    return [t.strip() for t in s.split(",") if t.strip()]
+
+
 def register(mcp) -> None:  # noqa: ANN001
 
     @mcp.tool()
@@ -26,7 +38,7 @@ def register(mcp) -> None:  # noqa: ANN001
         name: str,
         content_base64: str,
         mime_type: str,
-        tags: list[str] | None = None,
+        tags: str | None = None,
     ) -> str:
         """
         Store a file, image, or document under the given name.
@@ -35,7 +47,8 @@ def register(mcp) -> None:  # noqa: ANN001
             name:           Unique filename (may include subdirectory, e.g. "images/logo.png").
             content_base64: Base64-encoded file content.
             mime_type:      MIME type string, e.g. "image/png" or "text/plain".
-            tags:           Optional list of tag strings for organisation and filtering.
+            tags:           Optional comma-separated tags (e.g. "screenshots,ref"). Use this
+                            format when calling from Cursor to avoid array serialization issues.
 
         Returns a confirmation string with the stored byte count.
         """
@@ -48,7 +61,8 @@ def register(mcp) -> None:  # noqa: ANN001
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(content)
 
-        tags_json = json.dumps(tags or [])
+        tag_list = _normalize_tags(tags)
+        tags_json = json.dumps(tag_list)
         with db.connect() as conn:
             conn.execute(
                 """

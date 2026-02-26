@@ -20,4 +20,5 @@ __pycache__/
 # Editor
 .idea/
 .vscode/
+.cursor/mcp.json
 *.swp

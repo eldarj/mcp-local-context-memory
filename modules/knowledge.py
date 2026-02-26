@@ -22,13 +22,25 @@ import db
 from modules.embeddings import encode, from_blob, rank, to_blob
 
 
+def _normalize_tags(tags: str | list[str] | None) -> list[str]:
+    """Accept tags as list or comma-separated string (avoids Cursor MCP array serialization issues)."""
+    if tags is None:
+        return []
+    if isinstance(tags, list):
+        return [str(t).strip() for t in tags if str(t).strip()]
+    s = str(tags).strip()
+    if not s:
+        return []
+    return [t.strip() for t in s.split(",") if t.strip()]
+
+
 def register(mcp) -> None:  # noqa: ANN001
 
     @mcp.tool()
     def store_note(
         key: str,
         body: str,
-        tags: list[str] | None = None,
+        tags: str | None = None,
     ) -> str:
         """
         Save a text note or snippet under a unique key.
@@ -40,11 +52,13 @@ def register(mcp) -> None:  # noqa: ANN001
         Args:
             key:  Unique identifier for the note (e.g. "python/argparse-tips").
             body: Full text content of the note.
-            tags: Optional list of tag strings for organisation and filtering.
+            tags: Optional comma-separated tags (e.g. "newrelic,mcp,cursor"). Use this format
+                  when calling from Cursor to avoid JSON serialization issues with array parameters.
 
         Returns a confirmation string.
         """
-        tags_json = json.dumps(tags or [])
+        tag_list = _normalize_tags(tags)
+        tags_json = json.dumps(tag_list)
         embedding_blob = to_blob(encode(body))
         with db.connect() as conn:
             conn.execute(
