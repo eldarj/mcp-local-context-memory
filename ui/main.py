@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 import numpy as np
-import umap
+from sklearn.metrics.pairwise import cosine_similarity
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
@@ -14,7 +14,7 @@ app = FastAPI()
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro&immutable=1", uri=True)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -24,7 +24,7 @@ def get_graph():
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT n.key, n.tags, SUBSTR(n.body, 1, 140) AS snippet, e.embedding
+            SELECT n.key, n.tags, n.body, SUBSTR(n.body, 1, 140) AS snippet, e.embedding
             FROM notes n
             JOIN note_embeddings e ON n.key = e.key
         """).fetchall()
@@ -32,10 +32,27 @@ def get_graph():
         conn.close()
 
     if len(rows) < 2:
-        return {"nodes": []}
+        return {"nodes": [], "links": []}
 
     keys = [r["key"] for r in rows]
     snippets = [r["snippet"].replace("\n", " ") if r["snippet"] else "" for r in rows]
+
+    def extract_title(body: str) -> str:
+        first_line = body.split("\n")[0].strip()
+        # Format A: "## Session: title" or "## title"
+        if first_line.startswith("#"):
+            title = first_line.lstrip("#").strip()
+            for prefix in ("Session: ", "Session - "):
+                if title.startswith(prefix):
+                    title = title[len(prefix):]
+            return title
+        # Format B: "Session on YYYY-MM-DD in project: X\n\n## What we discussed"
+        if "in project:" in first_line:
+            return first_line.split("in project:")[-1].strip()
+        # Format C: plain "Session: title"
+        if first_line.lower().startswith("session:"):
+            return first_line.split(":", 1)[-1].strip()
+        return first_line
 
     tags_list = []
     for r in rows:
@@ -48,27 +65,44 @@ def get_graph():
         np.frombuffer(r["embedding"], dtype=np.float32) for r in rows
     ])
 
-    n_neighbors = min(15, len(rows) - 1)
-    reducer = umap.UMAP(
-        n_components=2,
-        n_neighbors=n_neighbors,
-        min_dist=0.3,
-        metric="cosine",
-        random_state=42,
-    )
-    coords = reducer.fit_transform(embeddings)
+    # Pairwise cosine similarities
+    sims = cosine_similarity(embeddings)
+
+    # Each node connects to its top-3 most similar neighbours (undirected, no duplicates)
+    seen = set()
+    links = []
+    for i in range(len(keys)):
+        scores = [(j, float(sims[i][j])) for j in range(len(keys)) if j != i]
+        scores.sort(key=lambda x: -x[1])
+        for j, sim in scores[:3]:
+            edge = (min(i, j), max(i, j))
+            if edge not in seen:
+                seen.add(edge)
+                links.append({"source": i, "target": j, "similarity": sim})
+
+    body_lengths = [len(r["snippet"]) for r in rows]  # snippet is already fetched
+
+    # Fetch full body lengths separately for accurate sizing
+    conn2 = get_conn()
+    try:
+        len_rows = conn2.execute("SELECT key, LENGTH(body) as len FROM notes").fetchall()
+        len_map = {r["key"]: r["len"] for r in len_rows}
+    finally:
+        conn2.close()
+
+    titles = [extract_title(r["body"]) for r in rows]
 
     nodes = [
         {
             "key": keys[i],
-            "x": float(coords[i, 0]),
-            "y": float(coords[i, 1]),
+            "title": titles[i],
             "tags": tags_list[i],
             "snippet": snippets[i],
+            "body_length": len_map.get(keys[i], 1000),
         }
         for i in range(len(keys))
     ]
-    return {"nodes": nodes}
+    return {"nodes": nodes, "links": links}
 
 
 @app.get("/api/notes/{key:path}")
