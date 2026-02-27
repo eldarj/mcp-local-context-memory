@@ -270,6 +270,7 @@ def stats_page():
     <span id="node-count" style="color:#999;font-size:13px">Stats</span>
     <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
     <a href="/notes" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Notes</a>
+    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;">Timeline</a>
   </header>
   <div class="stats-page">
 
@@ -507,7 +508,8 @@ def notes_page():
     <h1>Knowledge Base</h1>
     <span id="node-count" style="color:#999;font-size:13px">Notes</span>
     <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
-    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;">Stats</a>
+    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Stats</a>
+    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;">Timeline</a>
   </header>
 
   <div class="notes-page">
@@ -586,6 +588,328 @@ def notes_page():
     {SIDEBAR_JS}
 
     runSearch();
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+@app.get("/api/timeline")
+def api_timeline(tag: str = ""):
+    conn = get_conn()
+    try:
+        if tag:
+            rows = conn.execute(
+                """SELECT key, tags, created_at, updated_at,
+                          substr(body, 1, 300) as snippet
+                   FROM notes
+                   WHERE tags LIKE ?
+                   ORDER BY created_at ASC""",
+                (f'%"{tag}"%',),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT key, tags, created_at, updated_at,
+                          substr(body, 1, 300) as snippet
+                   FROM notes
+                   ORDER BY created_at ASC"""
+            ).fetchall()
+    finally:
+        conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.get("/timeline", response_class=HTMLResponse)
+def timeline_page():
+    SIDEBAR_CSS = """
+    #sidebar { position: fixed; top: 0; right: 0; bottom: 0; width: 0;
+               overflow: hidden; transition: width 0.22s ease;
+               border-left: 1px solid #ddddd8; display: flex;
+               flex-direction: column; background: #ffffff;
+               z-index: 100; box-shadow: -4px 0 20px rgba(0,0,0,0.08); }
+    #sidebar.open { width: 750px; }
+    """
+    SIDEBAR_HTML = """
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="note-key"></div>
+      <button id="close-btn" onclick="closeSidebar()">&#x2715;</button>
+    </div>
+    <div id="sidebar-meta">
+      <div id="note-tags"></div>
+      <div id="note-meta"></div>
+    </div>
+    <div id="sidebar-body">
+      <div id="note-loading" style="display:none">Loading&hellip;</div>
+      <div id="note-content" style="display:none">
+        <div id="note-body"></div>
+      </div>
+    </div>
+  </div>"""
+    SIDEBAR_JS = """
+    async function openSidebar(key) {
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('note-loading').style.display = 'block';
+      document.getElementById('note-content').style.display = 'none';
+      try {
+        const res = await fetch(`/api/notes/${encodeURIComponent(key)}`);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const note = await res.json();
+        document.getElementById('note-key').textContent = note.key;
+        document.getElementById('note-tags').innerHTML =
+          note.tags.map(t => `<span class="tag">${t}</span>`).join('');
+        document.getElementById('note-meta').textContent = `Updated ${note.updated_at}`;
+        document.getElementById('note-body').innerHTML = marked.parse(note.body);
+        document.getElementById('note-loading').style.display = 'none';
+        document.getElementById('note-content').style.display = 'block';
+      } catch (e) {
+        document.getElementById('note-loading').textContent = 'Failed to load: ' + e.message;
+      }
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base — Timeline</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    body {{ overflow: auto; display: block; }}
+    .timeline-page {{ max-width: 860px; margin: 0 auto; padding: 32px 24px; }}
+
+    /* Tag filter bar */
+    .tag-filter {{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; align-items: center; }}
+    .tag-filter-label {{ font-size: 11px; color: #999; text-transform: uppercase;
+                         letter-spacing: 0.5px; margin-right: 4px; }}
+    .filter-tag {{ background: #f0f0eb; color: #555; padding: 4px 10px; border-radius: 4px;
+                   font-size: 12px; cursor: pointer; border: 1px solid transparent;
+                   transition: all 0.15s; user-select: none; }}
+    .filter-tag:hover {{ background: #e4e4de; }}
+    .filter-tag.active {{ background: #1a1a1a; color: #fff; border-color: #1a1a1a; }}
+    .clear-btn {{ font-size: 12px; color: #999; cursor: pointer; margin-left: 8px; }}
+    .clear-btn:hover {{ color: #555; }}
+
+    /* Result count */
+    #result-count {{ font-size: 12px; color: #999; margin-bottom: 20px; }}
+
+    /* Timeline layout */
+    .timeline {{ position: relative; padding-left: 32px; }}
+    .timeline::before {{
+      content: ''; position: absolute; left: 6px; top: 0; bottom: 0;
+      width: 2px; background: #e8e8e4; border-radius: 1px;
+    }}
+
+    /* Month group header */
+    .month-group {{ margin-bottom: 8px; }}
+    .month-label {{
+      position: relative; font-size: 11px; font-weight: 600; color: #888;
+      text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 0 10px;
+      display: flex; align-items: center; gap: 10px;
+    }}
+    .month-label::before {{
+      content: ''; display: inline-block; width: 10px; height: 10px;
+      border-radius: 50%; background: #ccc; border: 2px solid #fff;
+      outline: 2px solid #ccc; position: absolute; left: -29px;
+    }}
+
+    /* Note card */
+    .note-card {{
+      background: #fff; border: 1px solid #ddddd8; border-radius: 8px;
+      padding: 14px 18px; margin-bottom: 10px; cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+    }}
+    .note-card:hover {{
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-color: #bbb;
+    }}
+    .note-card::before {{
+      content: ''; position: absolute; left: -27px; top: 18px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4466cc; border: 2px solid #fff; outline: 2px solid #4466cc;
+    }}
+    .note-key {{
+      font-family: monospace; font-size: 13px; color: #4466cc;
+      margin-bottom: 6px; word-break: break-all;
+    }}
+    .note-tags {{ display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }}
+    .note-snippet {{
+      font-size: 12px; color: #777; line-height: 1.5;
+      white-space: pre-wrap; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    }}
+    .note-date {{ font-size: 11px; color: #bbb; margin-top: 8px; }}
+
+    #spinner {{ display: none; font-size: 12px; color: #999; margin-bottom: 14px; }}
+
+    {SIDEBAR_CSS}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Knowledge Base</h1>
+    <span id="node-count" style="color:#999;font-size:13px">Timeline</span>
+    <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
+    <a href="/notes" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Notes</a>
+    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;">Stats</a>
+  </header>
+
+  <div class="timeline-page">
+    <div class="tag-filter" id="tag-bar">
+      <span class="tag-filter-label">Filter:</span>
+      <span id="tag-chips-loading" style="font-size:12px;color:#bbb">Loading tags&hellip;</span>
+    </div>
+    <div id="spinner">Loading&hellip;</div>
+    <div id="result-count"></div>
+    <div class="timeline" id="timeline-root"></div>
+  </div>
+
+  {SIDEBAR_HTML}
+
+  <script>
+    let activeTag = null;
+
+    // ── Tag bar ───────────────────────────────────────────────────────────────
+    async function loadTags() {{
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      const bar = document.getElementById('tag-bar');
+      bar.innerHTML = '<span class="tag-filter-label">Filter by tag:</span>';
+
+      const clearBtn = document.createElement('span');
+      clearBtn.className = 'clear-btn';
+      clearBtn.textContent = 'Clear';
+      clearBtn.style.display = 'none';
+      clearBtn.onclick = () => {{ setTag(null); }};
+
+      data.tag_breakdown.forEach(([tag, count]) => {{
+        const chip = document.createElement('span');
+        chip.className = 'filter-tag';
+        chip.dataset.tag = tag;
+        chip.textContent = `${{tag}} (${{count}})`;
+        chip.onclick = () => {{
+          setTag(activeTag === tag ? null : tag);
+        }};
+        bar.appendChild(chip);
+      }});
+
+      bar.appendChild(clearBtn);
+    }}
+
+    function setTag(tag) {{
+      activeTag = tag;
+      document.querySelectorAll('.filter-tag').forEach(c => {{
+        c.classList.toggle('active', c.dataset.tag === tag);
+      }});
+      const clearBtn = document.querySelector('.clear-btn');
+      if (clearBtn) clearBtn.style.display = tag ? 'inline' : 'none';
+      loadTimeline();
+    }}
+
+    // ── Timeline render ───────────────────────────────────────────────────────
+    async function loadTimeline() {{
+      document.getElementById('spinner').style.display = 'block';
+      document.getElementById('result-count').textContent = '';
+      document.getElementById('timeline-root').innerHTML = '';
+
+      const url = activeTag
+        ? `/api/timeline?tag=${{encodeURIComponent(activeTag)}}`
+        : '/api/timeline';
+
+      const res = await fetch(url);
+      const notes = await res.json();
+
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('result-count').textContent =
+        notes.length === 0 ? 'No notes found.'
+        : `${{notes.length}} note${{notes.length === 1 ? '' : 's'}}${{activeTag ? ` tagged "${{activeTag}}"` : ''}}`;
+
+      if (notes.length === 0) return;
+
+      // Group by YYYY-MM
+      const groups = {{}};
+      notes.forEach(n => {{
+        const month = (n.created_at || '').slice(0, 7) || 'Unknown';
+        if (!groups[month]) groups[month] = [];
+        groups[month].push(n);
+      }});
+
+      const root = document.getElementById('timeline-root');
+      Object.keys(groups).sort().reverse().forEach(month => {{
+        const groupEl = document.createElement('div');
+        groupEl.className = 'month-group';
+
+        const label = document.createElement('div');
+        label.className = 'month-label';
+        label.textContent = formatMonth(month);
+        groupEl.appendChild(label);
+
+        groups[month].slice().reverse().forEach(note => {{
+          groupEl.appendChild(buildCard(note));
+        }});
+
+        root.appendChild(groupEl);
+      }});
+    }}
+
+    function formatMonth(ym) {{
+      if (!ym || ym === 'Unknown') return 'Unknown';
+      const [y, m] = ym.split('-');
+      const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                      'Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${{months[parseInt(m,10)-1] || m}} ${{y}}`;
+    }}
+
+    function buildCard(note) {{
+      const tags = (() => {{ try {{ return JSON.parse(note.tags || '[]'); }} catch {{ return []; }} }})();
+      const snippet = (note.snippet || '').replace(/^#+\\s*/gm, '').replace(/\\*+/g, '').trim();
+
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      card.onclick = () => openSidebar(note.key);
+
+      const keyEl = document.createElement('div');
+      keyEl.className = 'note-key';
+      keyEl.textContent = note.key;
+      card.appendChild(keyEl);
+
+      if (tags.length) {{
+        const tagsEl = document.createElement('div');
+        tagsEl.className = 'note-tags';
+        tags.forEach(t => {{
+          const chip = document.createElement('span');
+          chip.className = 'tag' + (t === activeTag ? ' active' : '');
+          chip.textContent = t;
+          chip.style.cursor = 'pointer';
+          chip.onclick = e => {{ e.stopPropagation(); setTag(activeTag === t ? null : t); }};
+          tagsEl.appendChild(chip);
+        }});
+        card.appendChild(tagsEl);
+      }}
+
+      if (snippet) {{
+        const snippetEl = document.createElement('div');
+        snippetEl.className = 'note-snippet';
+        snippetEl.textContent = snippet.slice(0, 220);
+        card.appendChild(snippetEl);
+      }}
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'note-date';
+      dateEl.textContent = note.created_at || '';
+      card.appendChild(dateEl);
+
+      return card;
+    }}
+
+    {SIDEBAR_JS}
+
+    loadTags().then(() => loadTimeline());
   </script>
 </body>
 </html>"""
