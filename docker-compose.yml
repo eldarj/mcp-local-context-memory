@@ -15,4 +15,5 @@ services:
     volumes:
       - ./data:/data:ro
       - ./ui/static:/app/static:ro
+      - ~/.cache/huggingface:/root/.cache/huggingface:ro
     restart: unless-stopped

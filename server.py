@@ -5,7 +5,7 @@ Startup order:
   1. Initialise database + filesystem layout
   2. Create FastMCP instance
   3. Register built-in tools (ping)
-  4. Register module tools (storage, knowledge)
+  4. Register module tools (storage, knowledge, resources)
   5. Auto-load dynamic tools from tools/
   6. Run (stdio — Claude Code spawns this process)
 """
@@ -32,10 +32,11 @@ def ping() -> str:
     return "pong"
 
 # ── 4. Module tools ───────────────────────────────────────────────────────────
-from modules import knowledge, storage  # noqa: E402
+from modules import knowledge, resources, storage  # noqa: E402
 
 storage.register(mcp)
 knowledge.register(mcp)
+resources.register(mcp)
 
 # ── 5. Dynamic tool loading ───────────────────────────────────────────────────
 _TOOLS_DIR = Path(__file__).parent / "tools"

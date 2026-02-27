@@ -18,8 +18,10 @@ Tools registered:
 
 import json
 
+import numpy as np
+
 import db
-from modules.embeddings import encode, from_blob, rank, to_blob
+from modules.embeddings import AUTO_TAG_SKIP, encode, from_blob, rank, suggest_tags, to_blob
 
 
 def _normalize_tags(tags: str | list[str] | None) -> list[str]:
@@ -32,6 +34,41 @@ def _normalize_tags(tags: str | list[str] | None) -> list[str]:
     if not s:
         return []
     return [t.strip() for t in s.split(",") if t.strip()]
+
+
+def _compute_tag_centroids() -> dict[str, list[float]]:
+    """Compute per-tag centroid embedding vectors from all stored notes.
+
+    For each tag, averages all embeddings of notes carrying that tag and
+    L2-normalises the result. Tags in AUTO_TAG_SKIP are excluded so
+    overly generic tags don't bleed into auto-suggestions.
+    """
+    with db.connect() as conn:
+        rows = conn.execute(
+            "SELECT n.tags, e.embedding FROM notes n JOIN note_embeddings e ON n.key = e.key"
+        ).fetchall()
+
+    tag_vecs: dict[str, list[list[float]]] = {}
+    for r in rows:
+        try:
+            tags = json.loads(r["tags"]) if r["tags"] else []
+        except Exception:
+            tags = []
+        vec = from_blob(r["embedding"])
+        for tag in tags:
+            if tag in AUTO_TAG_SKIP:
+                continue
+            tag_vecs.setdefault(tag, []).append(vec)
+
+    centroids: dict[str, list[float]] = {}
+    for tag, vecs in tag_vecs.items():
+        mat = np.array(vecs)
+        mean = mat.mean(axis=0)
+        norm = float(np.linalg.norm(mean))
+        if norm > 0:
+            mean = mean / norm
+        centroids[tag] = mean.tolist()
+    return centroids
 
 
 def register(mcp) -> None:  # noqa: ANN001
@@ -58,8 +95,16 @@ def register(mcp) -> None:  # noqa: ANN001
         Returns a confirmation string.
         """
         tag_list = _normalize_tags(tags)
+        embedding_vec = encode(body)
+        embedding_blob = to_blob(embedding_vec)
+
+        auto_tagged = False
+        if not tag_list:
+            centroids = _compute_tag_centroids()
+            tag_list = suggest_tags(embedding_vec, centroids)
+            auto_tagged = bool(tag_list)
+
         tags_json = json.dumps(tag_list)
-        embedding_blob = to_blob(encode(body))
         with db.connect() as conn:
             conn.execute(
                 """
@@ -80,7 +125,8 @@ def register(mcp) -> None:  # noqa: ANN001
                 """,
                 (key, embedding_blob),
             )
-        return f"Stored note '{key}'."
+        suffix = f" (auto-tagged: {', '.join(tag_list)})" if auto_tagged else ""
+        return f"Stored note '{key}'.{suffix}"
 
     @mcp.tool()
     def get_note(key: str) -> str:

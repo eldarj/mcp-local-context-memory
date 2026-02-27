@@ -12,6 +12,11 @@ from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
+# Auto-tagging config
+AUTO_TAG_THRESHOLD = 0.45          # minimum cosine similarity to inherit a tag
+AUTO_TAG_MAX = 5                   # max number of auto-assigned tags
+AUTO_TAG_SKIP = {"conversation", "context"}  # too common — skip from centroid pool
+
 _model: SentenceTransformer | None = None
 
 
@@ -36,6 +41,30 @@ def from_blob(blob: bytes) -> list[float]:
     """Deserialize a binary blob back to a float list."""
     n = len(blob) // 4
     return list(struct.unpack(f"{n}f", blob))
+
+
+def suggest_tags(
+    note_vec: list[float],
+    tag_centroids: dict[str, list[float]],
+    threshold: float = AUTO_TAG_THRESHOLD,
+    max_tags: int = AUTO_TAG_MAX,
+) -> list[str]:
+    """Return tags whose centroid embedding is within `threshold` cosine similarity
+    of `note_vec`. Results ordered by descending similarity.
+
+    Centroids should be L2-normalised before being passed in, so the dot product
+    equals cosine similarity (same property used in `rank()`).
+    """
+    if not tag_centroids:
+        return []
+    q = np.array(note_vec)
+    scored = [
+        (tag, float(np.dot(q, np.array(centroid))))
+        for tag, centroid in tag_centroids.items()
+        if float(np.dot(q, np.array(centroid))) >= threshold
+    ]
+    scored.sort(key=lambda x: -x[1])
+    return [tag for tag, _ in scored[:max_tags]]
 
 
 def rank(
