@@ -270,7 +270,8 @@ def stats_page():
     <span id="node-count" style="color:#999;font-size:13px">Stats</span>
     <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
     <a href="/notes" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Notes</a>
-    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;">Timeline</a>
+    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Timeline</a>
+    <a href="/info" style="font-size:13px;color:#777;text-decoration:none;">Info</a>
   </header>
   <div class="stats-page">
 
@@ -509,7 +510,8 @@ def notes_page():
     <span id="node-count" style="color:#999;font-size:13px">Notes</span>
     <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
     <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Stats</a>
-    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;">Timeline</a>
+    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Timeline</a>
+    <a href="/info" style="font-size:13px;color:#777;text-decoration:none;">Info</a>
   </header>
 
   <div class="notes-page">
@@ -756,7 +758,8 @@ def timeline_page():
     <span id="node-count" style="color:#999;font-size:13px">Timeline</span>
     <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
     <a href="/notes" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Notes</a>
-    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;">Stats</a>
+    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Stats</a>
+    <a href="/info" style="font-size:13px;color:#777;text-decoration:none;">Info</a>
   </header>
 
   <div class="timeline-page">
@@ -911,6 +914,229 @@ def timeline_page():
 
     loadTags().then(() => loadTimeline());
   </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+@app.get("/info", response_class=HTMLResponse)
+def info_page():
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base — Info</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { overflow: auto; display: block; }
+    .info-page { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+
+    .section { margin-bottom: 40px; }
+    .section h2 {
+      font-size: 13px; font-weight: 600; color: #555;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 16px; padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* Feature grid */
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .feature-card {
+      background: #fff; border: 1px solid #ddddd8; border-radius: 8px;
+      padding: 16px 18px;
+    }
+    .feature-card h3 { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+    .feature-card p  { font-size: 12px; color: #777; line-height: 1.6; margin: 0; }
+
+    /* Tools table */
+    table { width: 100%; border-collapse: collapse; background: #fff;
+            border: 1px solid #ddddd8; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid #f0f0eb;
+              font-size: 13px; }
+    th { background: #f8f8f5; font-size: 11px; color: #888;
+         text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { font-family: monospace; font-size: 12px; color: #4466cc; white-space: nowrap; }
+    td.dim { color: #999; font-size: 12px; }
+
+    /* Skill cards */
+    .skill-list { display: flex; flex-direction: column; gap: 10px; }
+    .skill-card {
+      background: #fff; border: 1px solid #ddddd8; border-radius: 8px;
+      padding: 14px 18px; display: flex; align-items: baseline; gap: 16px;
+    }
+    .skill-name {
+      font-family: monospace; font-size: 13px; color: #1a1a1a;
+      font-weight: 600; white-space: nowrap; min-width: 240px;
+    }
+    .skill-desc { font-size: 12px; color: #777; line-height: 1.6; }
+
+    /* UI pages table */
+    .pages-list { display: flex; flex-direction: column; gap: 8px; }
+    .page-row {
+      background: #fff; border: 1px solid #ddddd8; border-radius: 8px;
+      padding: 12px 18px; display: flex; align-items: baseline; gap: 16px;
+    }
+    .page-path { font-family: monospace; font-size: 13px; color: #4466cc; min-width: 120px; }
+    .page-desc { font-size: 12px; color: #777; }
+
+    /* Tip box */
+    .tip {
+      background: #f8f8f5; border: 1px solid #ddddd8; border-radius: 8px;
+      padding: 14px 18px; font-size: 12px; color: #666; line-height: 1.7;
+    }
+    .tip code {
+      font-family: monospace; background: #eee; padding: 1px 5px;
+      border-radius: 3px; font-size: 11px; color: #333;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Knowledge Base</h1>
+    <span id="node-count" style="color:#999;font-size:13px">Info</span>
+    <a href="/" style="margin-left:auto;font-size:13px;color:#777;text-decoration:none;margin-right:16px;">&#8592; Graph</a>
+    <a href="/notes" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Notes</a>
+    <a href="/stats" style="font-size:13px;color:#777;text-decoration:none;margin-right:16px;">Stats</a>
+    <a href="/timeline" style="font-size:13px;color:#777;text-decoration:none;">Timeline</a>
+  </header>
+
+  <div class="info-page">
+
+    <!-- Overview -->
+    <div class="section">
+      <h2>What is this?</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>Persistent memory for Claude</h3>
+          <p>A private MCP server that gives Claude a personal knowledge layer across all sessions. Notes and files survive restarts — stored locally in SQLite.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Semantic search</h3>
+          <p>Every note is embedded with <code>all-MiniLM-L6-v2</code>. Search by meaning, not just keywords. Cosine similarity ranks results by relevance.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Auto-tagging</h3>
+          <p>Store a note with no tags and the server infers them from tag centroid embeddings — based on what you've stored before.</p>
+        </div>
+        <div class="feature-card">
+          <h3>MCP Resources</h3>
+          <p>All notes are exposed as <code>notes://&lt;key&gt;</code> MCP Resources. Claude can read them directly into context without a tool call.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Cross-session context</h3>
+          <p>Use <code>/learn-store-context</code> to summarize a session, and <code>/learn-load-context</code> to restore it next time — like a personal memory log.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Extensible</h3>
+          <p>Drop a <code>.py</code> file in <code>tools/</code> with a <code>register(mcp)</code> function. It's auto-loaded on next server start.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP Tools -->
+    <div class="section">
+      <h2>MCP Tools</h2>
+      <table>
+        <thead><tr><th>Tool</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ping()</td><td class="dim">Health check — returns "pong"</td></tr>
+          <tr><td>store_note(key, body, tags?)</td><td class="dim">Save or overwrite a note. Auto-tags if no tags provided. Generates and stores embedding.</td></tr>
+          <tr><td>get_note(key)</td><td class="dim">Retrieve a note by its exact key.</td></tr>
+          <tr><td>search_notes(query, keyword?)</td><td class="dim">Semantic search by default (cosine similarity). Pass <code>keyword=True</code> for LIKE fallback.</td></tr>
+          <tr><td>list_notes(tag?)</td><td class="dim">List all notes, optionally filtered by tag.</td></tr>
+          <tr><td>delete_note(key)</td><td class="dim">Delete a note and its embedding.</td></tr>
+          <tr><td>store_file(name, content_base64, mime_type, tags?)</td><td class="dim">Store a binary file (image, PDF, etc.) by name.</td></tr>
+          <tr><td>get_file(name)</td><td class="dim">Retrieve a stored file by name.</td></tr>
+          <tr><td>list_files(tag?)</td><td class="dim">List all stored files, optionally filtered by tag.</td></tr>
+          <tr><td>delete_file(name)</td><td class="dim">Delete a stored file.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Skills / Slash Commands -->
+    <div class="section">
+      <h2>Skills &amp; Slash Commands</h2>
+      <p style="font-size:12px;color:#999;margin-bottom:14px;">
+        Invoke any skill in Claude Code by typing <code>/skill-name</code>. Skills live in
+        <code>.claude/skills/</code> — copy to <code>~/.claude/skills/</code> for global access.
+      </p>
+      <div class="skill-list">
+        <div class="skill-card">
+          <span class="skill-name">/learn-store-context</span>
+          <span class="skill-desc">Summarize the current conversation and store it as a note tagged <code>conversation</code>. Run at the end of every session to build a memory log.</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-load-context</span>
+          <span class="skill-desc">Load all <code>conversation</code>-tagged notes and restore prior session context. Run at the start of a new session to resume where you left off.</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-start-ui</span>
+          <span class="skill-desc">Start this knowledge base UI via Docker Compose. Opens at <code>http://localhost:8000</code>.</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-summarize-repo</span>
+          <span class="skill-desc">Walk the current repo, read key files, and store a structured architecture summary note under <code>repo-summary/&lt;name&gt;</code>.</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-integration-documentation</span>
+          <span class="skill-desc">Document the full integration surface of the current repo — REST endpoints, events, env vars, auth — and store as <code>integration-docs/&lt;name&gt;</code>.</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-generate-swagger</span>
+          <span class="skill-desc">Read the REST API codebase and generate a valid OpenAPI 3.0.3 YAML spec. Stored as a file under <code>swagger/&lt;name&gt;.yaml</code> with a summary note.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Pages -->
+    <div class="section">
+      <h2>UI Pages</h2>
+      <div class="pages-list">
+        <div class="page-row">
+          <span class="page-path"><a href="/" style="color:#4466cc;text-decoration:none;">/</a></span>
+          <span class="page-desc">D3 force graph — nodes are notes, edges are cosine similarity links. Node size = body length, colour = primary tag.</span>
+        </div>
+        <div class="page-row">
+          <span class="page-path"><a href="/notes" style="color:#4466cc;text-decoration:none;">/notes</a></span>
+          <span class="page-desc">Searchable table of all notes. Toggle between keyword (title/body) and semantic (embedding) search modes.</span>
+        </div>
+        <div class="page-row">
+          <span class="page-path"><a href="/stats" style="color:#4466cc;text-decoration:none;">/stats</a></span>
+          <span class="page-desc">Dashboard — note &amp; file counts, total storage, tag breakdown, recently updated notes and files.</span>
+        </div>
+        <div class="page-row">
+          <span class="page-path"><a href="/timeline" style="color:#4466cc;text-decoration:none;">/timeline</a></span>
+          <span class="page-desc">Chronological timeline grouped by month. Filter by tag to trace decision history across topics (real-estate, finance, java, etc.).</span>
+        </div>
+        <div class="page-row">
+          <span class="page-path"><a href="/info" style="color:#4466cc;text-decoration:none;">/info</a></span>
+          <span class="page-desc">This page — feature reference, tool list, slash commands.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="section">
+      <h2>Tips</h2>
+      <div class="tip">
+        <strong>Key naming convention:</strong> use <code>category/subcategory-title</code> (e.g.
+        <code>chatgpt/2025-10-01-auth-design</code>, <code>ideas/feature-name</code>,
+        <code>conversation/2026-02-28-120000</code>). Keys are searchable and shown in the graph.<br><br>
+        <strong>Tags:</strong> comma-separated string works from Cursor (<code>"java,api,auth"</code>);
+        Claude Code can pass a list. Both are normalized by the server.<br><br>
+        <strong>Semantic search default:</strong> <code>search_notes("auth microservices")</code> uses
+        embedding similarity. Add <code>keyword=True</code> for exact LIKE matching.<br><br>
+        <strong>MCP Resources:</strong> Claude can reference <code>notes://your/key</code> directly
+        in conversation — no tool call needed — once the resource list is fetched.<br><br>
+        <strong>Dynamic tools:</strong> drop a <code>.py</code> file in <code>tools/</code> with
+        <code>def register(mcp): ...</code> — picked up automatically on next Claude Code start.
+        Prefix with <code>_</code> to disable without deleting.
+      </div>
+    </div>
+
+  </div>
 </body>
 </html>"""
     return HTMLResponse(content=html)
