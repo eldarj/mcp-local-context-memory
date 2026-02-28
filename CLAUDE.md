@@ -46,12 +46,12 @@ my-own-mcp-server/
 │   └── backfill_embeddings.py  # One-time migration to generate embeddings for existing notes
 ├── tools/                 # Drop custom tools here — auto-loaded on startup
 │   └── example_tool.py    # Shows the register(mcp) pattern
-├── ui/                    # Dockerised knowledge base UI (separate from MCP server)
+├── ui/                    # Knowledge base UI (runs locally or via Docker)
 │   ├── Dockerfile
 │   ├── main.py            # FastAPI: /api/graph (cosine similarity links) + /api/notes/:key
 │   ├── requirements.txt
 │   └── static/            # D3 force graph, light theme, markdown sidebar
-├── docker-compose.yml     # UI service only — MCP server runs via stdio, not Docker
+├── docker-compose.yml     # Optional Docker setup for UI — MCP server runs via stdio, not Docker
 ├── .claude/
 │   └── skills/
 │       ├── learn-store-context/   # Skill: summarize and store session context
@@ -91,12 +91,13 @@ To make the server available in all projects, register it at user scope via `cla
 - Embeddings stored as `float32` BLOBs in `note_embeddings`; `to_blob` / `from_blob` handle serialisation
 
 ### Knowledge base UI (`ui/`)
-- Separate Dockerised FastAPI app — reads `data/db.sqlite` directly via read-only volume mount
-- `/api/graph`: loads all note embeddings, computes pairwise cosine similarities, returns top-3 neighbour links per note
+- FastAPI app — reads `data/db.sqlite` directly (auto-detected from project root, or via `DATA_DIR` env var)
+- Can run locally with `uvicorn ui.main:app --reload` (preferred) or via Docker (`docker compose up -d --build ui`)
+- `/api/graph`: loads all note embeddings, computes pairwise cosine similarities (numpy, no sklearn), returns top-3 neighbour links per note
 - `/api/notes/:key`: returns full note body + metadata
 - Frontend: D3 force simulation where link strength ∝ similarity; nodes sized by body length, coloured by specific tag
-- Start with `/learn-start-ui` or `docker compose up -d --build ui`
-- Static files (`ui/static/`) are volume-mounted — CSS/JS changes reflect on refresh without rebuilding
+- Start with `/learn-start-ui` or `uvicorn ui.main:app --host 127.0.0.1 --port 8000 --reload`
+- Static files served from `ui/static/` — CSS/JS changes reflect on refresh with `--reload`
 
 ### Adding a dynamic tool
 Drop a `.py` file into `tools/`. It must export `register(mcp)`:

@@ -1,0 +1,31 @@
+---
+description: How to launch the knowledge base UI locally without Docker
+globs:
+alwaysApply: false
+---
+
+# Launching the Knowledge Base UI
+
+Prefer running the UI locally with uvicorn instead of using Docker.
+
+## Install dependencies (one-time)
+
+```bash
+pip install -r ui/requirements.txt
+```
+
+## Start the UI
+
+From the project root:
+
+```bash
+uvicorn ui.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Then open http://localhost:8000
+
+## Notes
+
+- The app auto-detects `data/db.sqlite` relative to the project root — no `DATA_DIR` env var needed.
+- Static files are served from `ui/static/` — CSS/JS changes reflect immediately with `--reload`.
+- Do NOT use `docker compose up ui` unless specifically asked. The Docker setup requires Colima/Docker Desktop and has caused platform-specific build issues.

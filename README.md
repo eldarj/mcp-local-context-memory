@@ -122,7 +122,7 @@ Two skills ship with this repo for cross-session memory. Type either directly in
 |---|---|
 | `/learn-store-context` | Summarizes the current conversation and saves it as a note — run this at the end of a session |
 | `/learn-load-context` | Loads and reads back previously stored summaries — run this at the start of a new session to pick up where you left off |
-| `/learn-start-ui` | Starts the knowledge base UI at http://localhost:8000 (requires Docker) |
+| `/learn-start-ui` | Starts the knowledge base UI at http://localhost:8000 |
 
 These work inside this project directory out of the box. To use them in any project, copy them to `~/.claude/skills/` (see Quick Start step 5).
 
@@ -329,7 +329,7 @@ Then in a Claude conversation:
 - `mcp[cli]>=1.0.0`
 - `numpy>=1.24.0`
 - `sentence-transformers>=3.0.0`
-- Docker (optional — only needed for the UI)
+- Docker (optional — the UI can also run locally with `uvicorn`)
 
 ---
 
@@ -348,5 +348,5 @@ All data stays on your machine:
 - **SQLite FTS5** — replace LIKE-based keyword fallback with proper tokenised full-text search
 - **Note versioning** — keep edit history before overwriting
 - **Export / import** — `export_all` / `import_all` for backup and migration
-- **UI: cache UMAP/graph layout** — avoid recomputing on every page load at large scale
+- **UI: cache graph layout** — persist computed positions so large graphs don't recompute on every load
 - **UI: search bar** — filter visible nodes by query

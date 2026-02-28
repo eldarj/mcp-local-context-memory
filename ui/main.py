@@ -1,17 +1,20 @@
 import json
+import os
 import sqlite3
 import struct
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sentence_transformers import SentenceTransformer
 
-DATA_DIR = Path("/data")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(PROJECT_ROOT / "data")))
 DB_PATH = DATA_DIR / "db.sqlite"
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 _embed_model: SentenceTransformer | None = None
 
@@ -82,8 +85,9 @@ def get_graph():
         np.frombuffer(r["embedding"], dtype=np.float32) for r in rows
     ])
 
-    # Pairwise cosine similarities
-    sims = cosine_similarity(embeddings)
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms = np.where(norms == 0, 1, norms)
+    sims = (embeddings / norms) @ (embeddings / norms).T
 
     # Each node connects to its top-3 most similar neighbours (undirected, no duplicates)
     seen = set()
@@ -391,7 +395,9 @@ def api_search(q: str = "", mode: str = "keyword"):
             ).reshape(1, -1)
             keys = [r["key"] for r in emb_rows]
             matrix = np.array([_from_blob(r["embedding"]) for r in emb_rows])
-            scores = cosine_similarity(query_vec, matrix)[0]
+            mat_norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+            mat_norms = np.where(mat_norms == 0, 1, mat_norms)
+            scores = ((query_vec / np.linalg.norm(query_vec)) @ (matrix / mat_norms).T)[0]
             ranked_keys = [keys[i] for i in np.argsort(scores)[::-1][:50]]
             placeholders = ",".join("?" * len(ranked_keys))
             meta_rows = conn.execute(
@@ -593,4 +599,4 @@ def notes_page():
 
 
 # Static files must be mounted last
-app.mount("/", StaticFiles(directory="/app/static", html=True), name="static")
+app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
