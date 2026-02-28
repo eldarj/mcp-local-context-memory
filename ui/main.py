@@ -1087,6 +1087,10 @@ def info_page():
           <span class="skill-name">/learn-generate-swagger</span>
           <span class="skill-desc">Read the REST API codebase and generate a valid OpenAPI 3.0.3 YAML spec. Stored as a file under <code>swagger/&lt;name&gt;.yaml</code> with a summary note.</span>
         </div>
+        <div class="skill-card">
+          <span class="skill-name">/learn-generate-asyncapi</span>
+          <span class="skill-desc">Read an async/event-driven codebase (RabbitMQ, Kafka, MQTT, WebSocket, SSE) and generate a valid AsyncAPI 2.6 YAML spec with full protocol bindings. Stored as <code>asyncapi/&lt;name&gt;.yaml</code> with a summary note.</span>
+        </div>
       </div>
     </div>
 
